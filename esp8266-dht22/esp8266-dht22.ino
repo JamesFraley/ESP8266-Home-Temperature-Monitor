@@ -5,6 +5,10 @@
 #include <ESP8266WiFi.h>
 #include <ESP8266HTTPClient.h>
 
+#include <ESPAsyncTCP.h>
+#include <ESPAsyncWebServer.h>
+#include <AsyncElegantOTA.h>
+
 #define LED1 D4
 #define LED2 D0
 bool LEDState=true;
@@ -26,6 +30,8 @@ const String serverName  = "http://192.168.1.4";
 const int httpPort       = 3000;
 char httpRequestData[200];
 bool lastNetworkRestart=false;
+
+AsyncWebServer server(80);
 
 void readDHT();
 void sendData();
@@ -59,7 +65,8 @@ void loop() {
 void manageWIFI(){
   WiFi.disconnect();
   WiFi.begin(ssid, password);
-  Serial.println(2);
+  Serial.println();
+  Serial.println();
   Serial.println("Connecting");
   while(WiFi.status() != WL_CONNECTED) {
     Serial.print(".");
@@ -67,12 +74,21 @@ void manageWIFI(){
     delay(500);
   }
   Serial.println("");
-  Serial.print("IP: ");
+  Serial.print("Connected to ");
+  Serial.println(ssid);
+  Serial.print("IP address: ");
   Serial.println(WiFi.localIP());
-
   Serial.print("MAC Address: ");
   Serial.println(WiFi.macAddress());
   lastNetworkRestart = "network restart";
+
+  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
+    request->send(200, "text/plain", "Storage Room");
+  });
+
+  AsyncElegantOTA.begin(&server);    // Start ElegantOTA
+  server.begin();
+  Serial.println("HTTP server started");  
 }
 
 void flashLED(){
@@ -90,7 +106,7 @@ void readDHT() {
   String octet = String(myIP[3]);
   int sLen = octet.length();
   String lastDigit=octet.substring(sLen-1);
-  sprintf(httpRequestData, "{\"ip\":\"%i.%i.%i.%i\",\"last_digit\":\"%s\",\"room\":\"garage\",\"tempf\":%.2f,\"tempc\":%.2f,\"humidity\":%.2f}", myIP[0], myIP[1], myIP[2], myIP[3], lastDigit, f, c, h);
+  sprintf(httpRequestData, "{\"ip\":\"%i.%i.%i.%i\",\"last_digit\":\"%s\",\"room\":\"StorageRoom\",\"tempf\":%.2f,\"tempc\":%.2f,\"humidity\":%.2f}", myIP[0], myIP[1], myIP[2], myIP[3], lastDigit.c_str(), f, c, h);
   Serial.println(httpRequestData);
 }
 
